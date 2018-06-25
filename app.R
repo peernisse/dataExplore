@@ -1,25 +1,33 @@
 #-----------------On Load Component---------------------------
 library(shiny)
+library(tidyverse)
 
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
    
    # Application title
-   titlePanel("Old Faithful Geyser Data"),
+   titlePanel("Plotting App"),
    
-   # Sidebar with a slider input for number of bins 
+   # Data input and plot parameter tools on left
    sidebarLayout(
-      sidebarPanel(
-         sliderInput("bins",
-                     "Number of bins:",
-                     min = 1,
-                     max = 50,
-                     value = 30)
-      ),
+        sidebarPanel(
+         
+              fileInput("file", label = h3("File input"),accept='.csv'),
+              
+              fluidRow(column(4, verbatimTextOutput("value"))),
+              
+              h3("Plot Configuration"),
+              
+              uiOutput('choose_locs'),
+              
+              
+              dateRangeInput("dates", label = h3("Select Date range"))
+              
+        ),
       
-      # Show a plot of the generated distribution
+      # plot preview and data export tools
       mainPanel(
-         plotOutput("distPlot")
+         tableOutput('plot.data')
       )
    )
 )
@@ -27,14 +35,38 @@ ui <- fluidPage(
 #-----------------Server Component----------------------------
 server <- function(input, output) {
    
-   output$distPlot <- renderPlot({
-      # generate bins based on input$bins from ui.R
-      x    <- faithful[, 2] 
-      bins <- seq(min(x), max(x), length.out = input$bins + 1)
-      
-      # draw the histogram with the specified number of bins
-      hist(x, breaks = bins, col = 'darkgray', border = 'white')
-   })
+        pData <- reactive({
+                
+                inFile <- input$file
+                
+                if (is.null(inFile))
+                        return(NULL)
+                
+                tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+                
+                return(tbl)
+        })
+        
+        
+        
+        
+        output$choose_locs<-renderUI({
+                if(is.null(pData()))
+                        return()
+                locs<-unique(pData()$LOC_ID)
+                
+                checkboxGroupInput('locids',"Choose Locations",
+                                   choices = locs,
+                                   selected = locs)
+        })
+        
+        output$plot.data <- renderTable({
+                if(is.null(input$locids))
+                        return()
+                fData<-filter(pData(),LOC_ID %in% input$locids)
+                return(fData)
+        })
+        
 }
 
 #-----------------App Component--------------------------------
