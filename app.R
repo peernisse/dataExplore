@@ -52,7 +52,7 @@ ui <- fluidPage(
 )
 
 #-----------------Server Component----------------------------
-server <- function(input, output) {
+server <- function(input, output, session) {
    
         pData <- reactive({
                 
@@ -67,6 +67,24 @@ server <- function(input, output) {
                 return(tbl)
         })
         
+        baseDates <- reactive({
+                inFile <- input$file
+                
+                if (is.null(inFile))
+                        return(NULL)
+                
+                dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
+                dts$LOG_DATE<-as.POSIXct(strptime(dts$LOG_DATE,format="%d-%b-%y"))
+                bDates<-c(min(dts$LOG_DATE),max(dts$LOG_DATE))
+                
+                return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
+                
+        })
+        
+        #Date range reset button action
+        observeEvent(input$clrDates,{
+                updateDateRangeInput(session,inputId = 'dtRng', start = baseDates()[1], end = baseDates()[2])
+        })
         
         output$choose_locs<-renderUI({
                 if(is.null(pData()))
@@ -81,12 +99,12 @@ server <- function(input, output) {
         output$choose_dates<-renderUI({
                 if(is.null(pData()))
                         return()
-                minDate<-min(pData()$LOG_DATE)
-                maxDate<-max(pData()$LOG_DATE)
+                # minDate<-min(pData()$LOG_DATE)
+                # maxDate<-max(pData()$LOG_DATE)
                 
                 dateRangeInput('dtRng',"Choose Date Range",
-                               start = minDate,
-                               end = maxDate,
+                               start = baseDates()[1],
+                               end = baseDates()[2],
                                format = 'dd-M-yyyy'
                                 
                                )
@@ -123,6 +141,8 @@ server <- function(input, output) {
         })
         
         output$statsData <- renderDataTable({
+                if(is.null(input$locids))
+                        return()
                 pData() %>% filter(LOC_ID %in% input$locids,
                                    LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]) %>% 
                         group_by(LOC_ID) %>% 
