@@ -2,6 +2,7 @@
 #Libraries
 library(shiny)
 library(tidyverse)
+options(scipen = 6)
 
 
 #Source functions
@@ -26,11 +27,20 @@ ui <- fluidPage(
               fluidRow(
                       column(6,
                              h5(strong("Choose Locations")),
-                             uiOutput('choose_locs')  
+                             
+                             wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 120px",
+                                     uiOutput('choose_locs')
+                                     
+                             )
+                               
                       ),
                       column(6,
                              h5(strong("Choose Parameters")),
-                             uiOutput('choose_params') 
+                             wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 120px",
+                                       uiOutput('choose_params')
+                                       
+                             )
+                              
                       )
               ),
               
@@ -47,7 +57,6 @@ ui <- fluidPage(
               
               
               
-              
         ),
       
       # plot preview and data export tools
@@ -56,15 +65,11 @@ ui <- fluidPage(
               tabsetPanel(type = "tabs",
                           tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
                           tabPanel("Explore Plots", 
-                                   fluidRow(
-                                           column(6,plotOutput("timeSeriesPlot")),
-                                           column(6,plotOutput("boxPlot"))
-                                           ),
-                                   fluidRow(
-                                           column(6,plotOutput("qPlot")),
-                                           column(6,plotOutput("hPlot"))
-                                   )
-                                ),
+                                        plotOutput("timeSeriesPlot"),
+                                        plotOutput("boxPlot"),
+                                        plotOutput("qPlot"),
+                                        plotOutput("hPlot")
+                          ),
                           tabPanel("Multiple Plots","Coming Soon"),
                           tabPanel("Stats", dataTableOutput('statsData'))
               )
@@ -76,6 +81,7 @@ ui <- fluidPage(
 #-----------------Server Component----------------------------
 server <- function(input, output, session) {
    
+        #Data import-----------------------------------------
         pData <- reactive({
                 
                 inFile <- input$file
@@ -106,16 +112,33 @@ server <- function(input, output, session) {
                 
         })
         
-        #Date range reset button action
+        #Buttons-------------------------------------------------
+        #Date range refresh button action
         observeEvent(input$clrDates,{
                 updateDateRangeInput(session,inputId = 'dtRng', start = baseDates()[1], end = baseDates()[2])
         })
         
+        #Create refresh date range button
+        output$reset_dates <- renderUI({
+                if(is.null(pData()))
+                        return()
+                actionButton('clrDates',NULL,
+                             icon("refresh"), 
+                             style="color: #fff; background-color: #337ab7; 
+                             border-color: #2e6da4; font-size:90%; width:35px; 
+                             height:30px; margin:1px")
+        })
+        
+        #Update locations and parameters checkboxes
+        
+        #Create locations and parameters checkboxes button
+        
+        #Pickers----------------------------------------------------
         #Create location picker
         output$choose_locs<-renderUI({
                 if(is.null(pData()))
                         return()
-                locs<-unique(pData()$Location)
+                locs<-sort(unique(pData()$Location))
                 
                 checkboxGroupInput('locids',NULL,
                                    choices = locs)
@@ -125,7 +148,7 @@ server <- function(input, output, session) {
         output$choose_params<-renderUI({
                 if(is.null(pData()))
                         return()
-                params<-unique(pData()$Parameter)
+                params<-sort(unique(pData()$Parameter))
                 
                 checkboxGroupInput('params',NULL,
                                    choices = params)
@@ -147,16 +170,8 @@ server <- function(input, output, session) {
                 
         })
         
-        #Create reset date range button
-        output$reset_dates <- renderUI({
-                if(is.null(pData()))
-                        return()
-                actionButton('clrDates',NULL,
-                             icon("refresh"), 
-                             style="color: #fff; background-color: #337ab7; 
-                             border-color: #2e6da4; font-size:90%; width:35px; 
-                             height:30px; margin:1px")
-        })
+        #Data table output
+        #Raw data------------------------------
         
         output$tblData <- renderDataTable({
                 if(is.null(input$locids))
@@ -171,6 +186,28 @@ server <- function(input, output, session) {
                 return(fData)
         })
         
+        #Stats summary data table---------------------------
+        output$statsData <- renderDataTable({
+                if(is.null(input$locids))
+                        return()
+                pData() %>% filter(Location %in% input$locids,
+                                   Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                   Parameter %in% input$params) %>% 
+                        group_by(Parameter,Location) %>% 
+                        summarise(`Number of Observations`=length(Value),
+                                  `Minimum Date`=min(Date),
+                                  `Maximum Date`=max(Date),
+                                  Minimum=min(Value),
+                                  Maximum=max(Value),
+                                  `First Quartile`=quantile(Value,0.25),
+                                  `Third Quartile`=quantile(Value,0.75),
+                                  Average=mean(Value),
+                                  `Standard Deviaton`=sd(Value),
+                                  Variance=var(Value))
+        })
+        
+        #Plotting-----------------------------------------------
+        #Explore plots--------------------------------
         output$timeSeriesPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
@@ -211,24 +248,10 @@ server <- function(input, output, session) {
                 return(hp)
         })
         
-        output$statsData <- renderDataTable({
-                if(is.null(input$locids))
-                        return()
-                pData() %>% filter(Location %in% input$locids,
-                                   Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                   Parameter %in% input$params) %>% 
-                        group_by(Parameter,Location) %>% 
-                        summarise(`Number of Observations`=length(Value),
-                                  `Minimum Date`=min(Date),
-                                  `Maximum Date`=max(Date),
-                                  Minimum=min(Value),
-                                  Maximum=max(Value),
-                                  `First Quartile`=quantile(Value,0.25),
-                                  `Third Quartile`=quantile(Value,0.75),
-                                  Average=mean(Value),
-                                  `Standard Deviaton`=sd(Value),
-                                  Variance=var(Value))
-        })
+        #Looped plots on a page
+        
+        
+        
         
 }
 
