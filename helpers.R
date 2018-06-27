@@ -19,3 +19,21 @@ bxPlot<-function(data,x,y){
                 labs(x="Location",y="Groundwater Elevation (meters amsl)",title="Groundwater Elevation Boxplots")
         
 }
+
+
+qPlot<-function(data){
+        g<-ggplot(data,aes(sample=WATER_ELEV))+
+                geom_qq()+
+                facet_wrap(~LOC_ID,scales="free")+
+                labs(x="Theoretical Distribution(normal)",y="Water Elevation (meters amsl)",title="Groundwater Elevation Distribution (quantile plot)")
+        
+}
+
+hPlot<-function(data){
+        g<-ggplot(data,aes(x=WATER_ELEV))+
+                geom_histogram()+
+                facet_wrap(~LOC_ID,scales="free")+
+                labs(x="Water Elevation Bins (meters amsl)",y="Count",title="Groundwater Elevation Distribution (histogram)")
+}
+
+

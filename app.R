@@ -45,7 +45,11 @@ ui <- fluidPage(
                                    fluidRow(
                                            column(6,plotOutput("timeSeriesPlot")),
                                            column(6,plotOutput("boxPlot"))
-                                           )
+                                           ),
+                                   fluidRow(
+                                           column(6,plotOutput("qPlot")),
+                                           column(6,plotOutput("hPlot"))
+                                   )
                                 ),
                           tabPanel("Multiple Plots","Coming Soon"),
                           tabPanel("Stats", dataTableOutput('statsData'))
@@ -155,6 +159,24 @@ server <- function(input, output, session) {
                                              LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
                 bxp<-bxPlot(bxData,bxData$LOC_ID,bxData$WATER_ELEV)
                 return(bxp)
+        })
+        
+        output$qPlot <- renderPlot({
+                if(is.null(input$locids))
+                        return()
+                qData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
+                                             LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
+                qp<-qPlot(qData)
+                return(qp)
+        })
+        
+        output$hPlot <- renderPlot({
+                if(is.null(input$locids))
+                        return()
+                hData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
+                                            LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
+                hp<-hPlot(hData)
+                return(hp)
         })
         
         output$statsData <- renderDataTable({
