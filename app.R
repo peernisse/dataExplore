@@ -16,14 +16,28 @@ ui <- fluidPage(
    # Data input and plot parameter tools on left
    sidebarLayout(
         sidebarPanel(
-         
-              fileInput("file", label = h3("File input"),accept='.csv'),
+              h3("File Input"),
+              p("Your .csv file should have columns: 'Location','Date','Parameter','Value','Units'"),
+              fileInput("file", label = NULL,accept='.csv'),
               
               fluidRow(column(4, verbatimTextOutput("value"))),
               
               h3("Explore Tools"),
-              h5(strong("Choose Locations")),
-              uiOutput('choose_locs'),
+              fluidRow(
+                      column(6,
+                             h5(strong("Choose Locations")),
+                             uiOutput('choose_locs')  
+                      ),
+                      column(6,
+                             h5(strong("Choose Parameters")),
+                             uiOutput('choose_params') 
+                      )
+              ),
+              
+              # h5(strong("Choose Locations")),
+              # uiOutput('choose_locs'),
+              # h5(strong("Choose Parameters")),
+              # uiOutput('choose_params'),
               
               h5(strong("Choose Date Range")),
               fluidRow(
@@ -68,9 +82,12 @@ server <- function(input, output, session) {
                 
                 if (is.null(inFile))
                         return(NULL)
-                
+                #Read in table
                 tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-                tbl$LOG_DATE<-as.POSIXct(strptime(tbl$LOG_DATE,format="%d-%b-%y"))
+                
+                tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%d-%b-%y"))
+                #Fix unit cases
+                tbl$Units<-fixUnits(tbl)
                 
                 return(tbl)
         })
@@ -82,8 +99,8 @@ server <- function(input, output, session) {
                         return(NULL)
                 
                 dts <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-                dts$LOG_DATE<-as.POSIXct(strptime(dts$LOG_DATE,format="%d-%b-%y"))
-                bDates<-c(min(dts$LOG_DATE),max(dts$LOG_DATE))
+                dts$Date<-as.POSIXct(strptime(dts$Date,format="%d-%b-%y"))
+                bDates<-c(min(dts$Date),max(dts$Date))
                 
                 return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
                 
@@ -94,22 +111,32 @@ server <- function(input, output, session) {
                 updateDateRangeInput(session,inputId = 'dtRng', start = baseDates()[1], end = baseDates()[2])
         })
         
+        #Create location picker
         output$choose_locs<-renderUI({
                 if(is.null(pData()))
                         return()
-                locs<-unique(pData()$LOC_ID)
+                locs<-unique(pData()$Location)
                 
                 checkboxGroupInput('locids',NULL,
-                                   choices = locs,
-                                   selected = locs)
+                                   choices = locs)
+        })
+        
+        #Create parameter picker
+        output$choose_params<-renderUI({
+                if(is.null(pData()))
+                        return()
+                params<-unique(pData()$Parameter)
+                
+                checkboxGroupInput('params',NULL,
+                                   choices = params)
         })
         
         #Create date range input
         output$choose_dates<-renderUI({
                 if(is.null(pData()))
                         return()
-                # minDate<-min(pData()$LOG_DATE)
-                # maxDate<-max(pData()$LOG_DATE)
+                # minDate<-min(pData()$Date)
+                # maxDate<-max(pData()$Date)
                 
                 dateRangeInput('dtRng',NULL,
                                start = baseDates()[1],
@@ -135,10 +162,11 @@ server <- function(input, output, session) {
                 if(is.null(input$locids))
                         return()
                 
-                fData<-pData() %>% filter(LOC_ID %in% input$locids,
-                                          LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]) %>% 
-                        arrange(LOC_ID,LOG_DATE)
-                fData$LOG_DATE<-as.character(fData$LOG_DATE)
+                fData<-pData() %>% filter(Location %in% input$locids,
+                                          Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                          Parameter %in% input$params) %>% 
+                        arrange(Location,Date)
+                fData$Date<-as.character(fData$Date)
                 
                 return(fData)
         })
@@ -146,26 +174,29 @@ server <- function(input, output, session) {
         output$timeSeriesPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
-                tsData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
-                                             LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
-                tsp<-tsPlot(tsData,tsData$LOG_DATE,tsData$WATER_ELEV)
+                tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                             Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                             Parameter %in% input$params))
+                tsp<-tsPlot(tsData,tsData$Date,tsData$Value)
                 return(tsp)
         })
         
         output$boxPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
-                bxData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
-                                             LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
-                bxp<-bxPlot(bxData,bxData$LOC_ID,bxData$WATER_ELEV)
+                bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                             Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                             Parameter %in% input$params))
+                bxp<-bxPlot(bxData,bxData$Location,bxData$Value)
                 return(bxp)
         })
         
         output$qPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
-                qData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
-                                             LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
+                qData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                             Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                            Parameter %in% input$params))
                 qp<-qPlot(qData)
                 return(qp)
         })
@@ -173,8 +204,9 @@ server <- function(input, output, session) {
         output$hPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
-                hData<-as.data.frame(filter(pData(),LOC_ID %in% input$locids,
-                                            LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]))
+                hData<-as.data.frame(filter(pData(),Location %in% input$locids,
+                                            Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                            Parameter %in% input$params))
                 hp<-hPlot(hData)
                 return(hp)
         })
@@ -182,19 +214,20 @@ server <- function(input, output, session) {
         output$statsData <- renderDataTable({
                 if(is.null(input$locids))
                         return()
-                pData() %>% filter(LOC_ID %in% input$locids,
-                                   LOG_DATE >= input$dtRng[1] & LOG_DATE<=input$dtRng[2]) %>% 
-                        group_by(LOC_ID) %>% 
-                        summarise(`Number of Observations`=length(WATER_ELEV),
-                                  `Minimum Date`=min(LOG_DATE),
-                                  `Maximum Date`=max(LOG_DATE),
-                                  Minimum=min(WATER_ELEV),
-                                  Maximum=max(WATER_ELEV),
-                                  `First Quartile`=quantile(WATER_ELEV,0.25),
-                                  `Third Quartile`=quantile(WATER_ELEV,0.75),
-                                  Average=mean(WATER_ELEV),
-                                  `Standard Deviaton`=sd(WATER_ELEV),
-                                  Variance=var(WATER_ELEV))
+                pData() %>% filter(Location %in% input$locids,
+                                   Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                   Parameter %in% input$params) %>% 
+                        group_by(Parameter,Location) %>% 
+                        summarise(`Number of Observations`=length(Value),
+                                  `Minimum Date`=min(Date),
+                                  `Maximum Date`=max(Date),
+                                  Minimum=min(Value),
+                                  Maximum=max(Value),
+                                  `First Quartile`=quantile(Value,0.25),
+                                  `Third Quartile`=quantile(Value,0.75),
+                                  Average=mean(Value),
+                                  `Standard Deviaton`=sd(Value),
+                                  Variance=var(Value))
         })
         
 }
