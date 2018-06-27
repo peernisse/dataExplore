@@ -9,9 +9,9 @@ source('helpers.R')
 
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
-   
+        
    # Application title
-   titlePanel("Plotting App"),
+   titlePanel("Data Explore"),
    
    # Data input and plot parameter tools on left
    sidebarLayout(
@@ -21,12 +21,16 @@ ui <- fluidPage(
               
               fluidRow(column(4, verbatimTextOutput("value"))),
               
-              h3("Plot Configuration"),
-              
+              h3("Explore Tools"),
+              h5(strong("Choose Locations")),
               uiOutput('choose_locs'),
               
-              uiOutput('choose_dates'),
-              actionButton('clrDates','Reset',width='60px')
+              h5(strong("Choose Date Range")),
+              fluidRow(
+                      column(10,uiOutput('choose_dates')),
+                      column(2,uiOutput('reset_dates'))
+              )
+              
               
               
               
@@ -91,23 +95,36 @@ server <- function(input, output, session) {
                         return()
                 locs<-unique(pData()$LOC_ID)
                 
-                checkboxGroupInput('locids',"Choose Locations",
+                checkboxGroupInput('locids',NULL,
                                    choices = locs,
                                    selected = locs)
         })
         
+        #Create date range input
         output$choose_dates<-renderUI({
                 if(is.null(pData()))
                         return()
                 # minDate<-min(pData()$LOG_DATE)
                 # maxDate<-max(pData()$LOG_DATE)
                 
-                dateRangeInput('dtRng',"Choose Date Range",
+                dateRangeInput('dtRng',NULL,
                                start = baseDates()[1],
                                end = baseDates()[2],
                                format = 'dd-M-yyyy'
                                 
                                )
+                
+        })
+        
+        #Create reset date range button
+        output$reset_dates <- renderUI({
+                if(is.null(pData()))
+                        return()
+                actionButton('clrDates',NULL,
+                             icon("refresh"), 
+                             style="color: #fff; background-color: #337ab7; 
+                             border-color: #2e6da4; font-size:90%; width:35px; 
+                             height:30px; margin:1px")
         })
         
         output$tblData <- renderDataTable({
