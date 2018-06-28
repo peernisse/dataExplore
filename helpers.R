@@ -19,28 +19,42 @@ fixUnits<-function(x){
         return(unitsOut)
 }
 
-#Plot functionss--------------------------------
-
-tsPlot<-function(data,x,y,units=NULL){
-        tsdat<-data
-        tsdat$Parameter<-paste0(tsdat$Parameter," (",tsdat$Units,")")
-        g<-ggplot(tsdat,aes(x=x,y=y, color=Location))+
-                geom_point()+
-                facet_wrap(~Parameter,scales="free")+
-                theme(legend.position = "bottom", legend.title = element_blank())+
-                labs(x="Date",y="Value",title="Time Series")
+#Calculate percent ND
+perND<-function(x,ndChar = 0){
+        
+        count<-length(x)
+        nd<-length(x[x==ndChar])
+        pND<-nd/count*100
+        return(pND)
         
 }
 
-bxPlot<-function(data,x,y){
+#Plot functionss--------------------------------
+
+tsPlot<-function(data){
+        tsdat<-as.data.frame(data)
+        tsdat$Parameter<-paste0(tsdat$Parameter," (",tsdat$Units,")")
+        g<-ggplot(tsdat,aes(x=Date,y=Result_ND, color=Location))+
+                geom_line(aes(color=Location),size=0.5)+
+                geom_point(size=3)+
+                geom_point(aes(x=Date,y=NonDetect),color="white",size=2)+
+                facet_wrap(~Parameter,scales="free")+
+                theme(legend.position = "bottom", legend.title = element_blank())+
+                labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")
         
-        bxdat<-data
+}
+
+bxPlot<-function(data){
+        
+        bxdat<-as.data.frame(data)
         bxdat$Parameter<-paste0(bxdat$Parameter," (",bxdat$Units,")")
-        g<-ggplot(bxdat,aes(x=x,y=y, fill=Location))+
-                geom_boxplot()+
+        g<-ggplot(bxdat,aes(x=Location,y=Value))+
+                geom_boxplot(fill='#ed7000')+
+                #geom_jitter(color="black")+
+                #geom_jitter(aes(x=Location,y=NonDetect),color="white")+
                 facet_wrap(~Parameter, scales="free")+
                 theme(legend.position = "bottom", legend.title = element_blank())+
-                labs(x="Location",y="Value",title="Boxplots")
+                labs(x="Location",y="Value",title="Boxplots Non-Detects at Zero")
         
 }
 
@@ -53,7 +67,7 @@ qPlot<-function(data){
                 geom_qq()+
                 facet_wrap(~Parameter,scales="free")+
                 theme(legend.position = "bottom", legend.title = element_blank())+
-                labs(x="Theoretical Distribution(normal)",y="Value",title="Distribution (quantile plot)")
+                labs(x="Theoretical Distribution(normal)",y="Value",title="Distribution (quantile plot) Non-Detects at Zero")
         
 }
 
@@ -65,7 +79,7 @@ hPlot<-function(data){
                 geom_histogram(alpha=0.5)+
                 facet_wrap(~Parameter,scales="free")+
                 theme(legend.position = "bottom", legend.title = element_blank())+
-                labs(x="Water Elevation Bins (meters amsl)",y="Count",title="Distribution (histogram)")
+                labs(x="Value Bins=30",y="Count",title="Distribution (histogram) Non-Detects at Zero")
 }
 
 

@@ -18,7 +18,14 @@ ui <- fluidPage(
    sidebarLayout(
         sidebarPanel(
               h3("File Input"),
-              p("Your .csv file should have columns: 'Location','Date','Parameter','Value','Units'"),
+              fluidRow(
+                      column(12,
+                             p("Your .csv file should have columns: 'Location','Date','Parameter','Value','Units',
+                               'DetectionFlag','Reporting_Limit','MDL'")
+                             )
+                      
+              ),
+              
               fileInput("file", label = NULL,accept='.csv'),
               
               fluidRow(column(4, verbatimTextOutput("value"))),
@@ -63,6 +70,8 @@ ui <- fluidPage(
       mainPanel(
          
               tabsetPanel(type = "tabs",
+                          tabPanel("Readme",
+                                   includeMarkdown('www/readme.md')),
                           tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
                           tabPanel("Explore Plots", 
                                         plotOutput("timeSeriesPlot"),
@@ -71,7 +80,9 @@ ui <- fluidPage(
                                         plotOutput("hPlot")
                           ),
                           tabPanel("Multiple Plots","Coming Soon"),
-                          tabPanel("Stats", dataTableOutput('statsData'))
+                          tabPanel("Stats", 
+                                   p('Add stat column picker here'),
+                                   dataTableOutput('statsData'))
               )
                     
       )
@@ -90,10 +101,13 @@ server <- function(input, output, session) {
                         return(NULL)
                 #Read in table
                 tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
-                
+                #Fix date format
                 tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%d-%b-%y"))
                 #Fix unit cases
                 tbl$Units<-fixUnits(tbl)
+                #Make non detect substitution columns
+                tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,tbl$Value))
+                tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,''))
                 
                 return(tbl)
         })
@@ -195,12 +209,13 @@ server <- function(input, output, session) {
                                    Parameter %in% input$params) %>% 
                         group_by(Parameter,Location) %>% 
                         summarise(`Number of Observations`=length(Value),
+                                  `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
                                   `Minimum Date`=min(Date),
                                   `Maximum Date`=max(Date),
-                                  Minimum=min(Value),
+                                  Minimum=as.character(ifelse(min(Value)==0,'ND',min(Value))),
                                   Maximum=max(Value),
-                                  `First Quartile`=quantile(Value,0.25),
-                                  `Third Quartile`=quantile(Value,0.75),
+                                  `First Quartile`=as.character(ifelse(quantile(Value,0.25)==0,'ND',quantile(Value,0.25))),
+                                  `Third Quartile`=as.character(ifelse(quantile(Value,0.75)==0,'ND',quantile(Value,0.75))),
                                   Average=mean(Value),
                                   `Standard Deviaton`=sd(Value),
                                   Variance=var(Value))
@@ -214,7 +229,7 @@ server <- function(input, output, session) {
                 tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                              Parameter %in% input$params))
-                tsp<-tsPlot(tsData,tsData$Date,tsData$Value)
+                tsp<-tsPlot(tsData)
                 return(tsp)
         })
         
@@ -224,7 +239,7 @@ server <- function(input, output, session) {
                 bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                              Parameter %in% input$params))
-                bxp<-bxPlot(bxData,bxData$Location,bxData$Value)
+                bxp<-bxPlot(bxData)
                 return(bxp)
         })
         
