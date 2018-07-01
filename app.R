@@ -81,14 +81,32 @@ ui <- fluidPage(
                                         plotOutput("hPlot")
                           ),
                           tabPanel("Multiple Plots","Coming Soon"),
-                          tabPanel("Stats", 
-                                   p('Add stat column picker here'),
-                                   dataTableOutput('statsData'))
-              )
+                          
+                          tabPanel("Stats",
+                                   fluidRow(
+                                           column(12,
+                                                  uiOutput('choose_stats') 
+                                           )
+                                   ),
+                                   
+                                   hr(),
+                                   dataTableOutput('statsData'),
+                                   hr(),
+                                   h3('Output this Table to CSV'),
+                                   fluidRow(
+                                        column(3,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
+                                        column(1,h4('.csv')),
+                                        column(2,downloadButton('expStats','Download'))
+                                                
+                                               
+                                   )
+                                         
+                          )
+              )#tabset panel
                     
-      )
-   )
-)
+      )#main panel
+   )#sidebar layout
+)#fluid page
 
 #-----------------Server Component----------------------------
 server <- function(input, output, session) {
@@ -185,6 +203,20 @@ server <- function(input, output, session) {
                 
         })
         
+        #Create stats table column picker
+        output$choose_stats<-renderUI({
+                if(is.null(pData()))
+                        return()
+                
+                statList<-names(statSumm())
+                
+                checkboxGroupInput('stats',NULL,
+                                   choices = statList,
+                                   selected = statList,
+                                   inline = TRUE)
+                
+        })
+        
         #Data table output
         #Raw data------------------------------
         
@@ -203,8 +235,14 @@ server <- function(input, output, session) {
         
         #Stats summary data table---------------------------
         output$statsData <- renderDataTable({
-                if(is.null(input$locids))
+                if(is.null(input$locids)|is.null(input$stats))
                         return()
+                sData <- statSumm() %>% select(input$stats)
+                return(sData)
+        })
+        
+        statSumm <- reactive({
+                
                 pData() %>% filter(Location %in% input$locids,
                                    Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                    Parameter %in% input$params) %>% 
@@ -220,7 +258,20 @@ server <- function(input, output, session) {
                                   Average=mean(Value),
                                   `Standard Deviaton`=sd(Value),
                                   Variance=var(Value))
+                
         })
+        
+        
+        
+        #Export stats summary table logic for download button------------------
+        output$expStats <- downloadHandler(
+                filename = function() {
+                        paste(input$expStatsFilename, ".csv", sep = "")
+                },
+                content = function(file) {
+                        write.csv(statSumm(), file, row.names = FALSE)
+                }
+        )
         
         #Plotting-----------------------------------------------
         #Explore plots--------------------------------
