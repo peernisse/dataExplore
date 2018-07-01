@@ -12,29 +12,31 @@ It is designed to do basic analysis and visualization of environmental, censored
 ## Data Input Format
 The data `.csv` file should contain the following columns, additional columns are ignored for analysis:
 
-Column Name      |Description
-:----------------|:--------------------------------------------------------------------------------
+Column Name                |Description
+:--------------------------|:------------------------------------------
 **Location**|Character field of location names
+**Matrix**|Field containing the matrix for the record (groundwater, air, soil, etc.)
 **Date**|Date or text, format should be `'DD-MMM-YY'`, strings will be converted to dates
 **Parameter**|Text column of parameters, spelled as desired on plots/tables etc.
 **Value**|Results field, usually numeric, will be coerced to numeric
 **Units**|A field of units abbreviations e.g., `'mg/l'`
 **DetectionFlag**|Flag field, non-detects should be flagged as `'ND'`
-**ReportingLimit**|Field witht he lab reporting limit, used in non-detect substitution
+**Reporting_Limit**|Field with he lab reporting limit, used in non-detect substitution
 **MDL**|Method detection limit, used for non-detect substitution id RL is missing
 
 ## Data Source
 How you get your data into the input format is up to you.
-If you happen to be using this within my workplace and you have access to the environmental Oracle DB,
-the following SQL statement may be of use:
 
-```{r}
-# Some example SQL code
-select loc_id as "Location", samp_date as "Date", ...
-from env_chem_lab cl inner join env_chem_code cc on cl.chem_code=cc.chem_code
-where 1=1
-and sample_type = 'N'
-and matrix_code = 'WG'
-and prep_code = 'TOTAL'
-...
-```
+**Figure 1.** Screenshot of valid data `.csv` file.
+
+<img src="C:/Shiny/dataExplore/www/importData.png" style="width:80%;"></img>
+
+
+
+
+
+
+
+
+
+

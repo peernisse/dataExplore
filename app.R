@@ -21,7 +21,7 @@ ui <- fluidPage(
               h3("File Input"),
               fluidRow(
                       column(12,
-                             p("Your .csv file should have columns: 'Location','Date','Parameter','Value','Units',
+                             p("Your .csv file should have columns: 'Location','Matrix',Date','Parameter','Value','Units',
                                'DetectionFlag','Reporting_Limit','MDL'")
                              )
                       
@@ -32,11 +32,13 @@ ui <- fluidPage(
               fluidRow(column(4, verbatimTextOutput("value"))),
               
               h3("Explore Tools"),
+              h5(strong('Choose Matrices')),
+              uiOutput('choose_matrix'),
               fluidRow(
                       column(6,
                              h5(strong("Choose Locations")),
                              
-                             wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 120px",
+                             wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 180px",
                                      uiOutput('choose_locs')
                                      
                              )
@@ -44,7 +46,7 @@ ui <- fluidPage(
                       ),
                       column(6,
                              h5(strong("Choose Parameters")),
-                             wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 120px",
+                             wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px",
                                        uiOutput('choose_params')
                                        
                              )
@@ -71,8 +73,7 @@ ui <- fluidPage(
       mainPanel(
          
               tabsetPanel(type = "tabs",
-                          tabPanel("Readme",
-                                   includeMarkdown('www/readme.md')),
+                          
                           tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
                           tabPanel("Explore Plots", 
                                         plotOutput("timeSeriesPlot"),
@@ -83,25 +84,29 @@ ui <- fluidPage(
                           tabPanel("Multiple Plots","Coming Soon"),
                           
                           tabPanel("Stats",
+                                   
                                    fluidRow(
-                                           column(12,
-                                                  uiOutput('choose_stats') 
+                                           
+                                           column(6, h3('Select Stats to Show'),uiOutput('choose_stats')),
+                                           column(6,h3('Output this Table to CSV'),
+                                                  fluidRow(
+                                                          column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
+                                                          column(1,h4('.csv'),style='padding-left: 0px;'),
+                                                          column(2,downloadButton('expStats','Download'))
+                                                          
+                                                  )
                                            )
                                    ),
                                    
                                    hr(),
-                                   dataTableOutput('statsData'),
-                                   hr(),
-                                   h3('Output this Table to CSV'),
-                                   fluidRow(
-                                        column(3,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
-                                        column(1,h4('.csv')),
-                                        column(2,downloadButton('expStats','Download'))
-                                                
-                                               
-                                   )
+                                   
+                                   dataTableOutput('statsData')
+                                   
                                          
-                          )
+                          ),#tab panel stats
+                          
+                          tabPanel("About",
+                                   includeMarkdown('www/readme.md'))
               )#tabset panel
                     
       )#main panel
@@ -187,6 +192,18 @@ server <- function(input, output, session) {
                                    choices = params)
         })
         
+        #Create matrix picker
+        output$choose_matrix<-renderUI({
+                if(is.null(pData()))
+                        return()
+                matrices<-sort(unique(pData()$Matrix))
+                
+                checkboxGroupInput('mtrx',NULL,
+                                   choices = matrices,
+                                   selected = matrices,
+                                   inline = TRUE)
+        })
+        
         #Create date range input
         output$choose_dates<-renderUI({
                 if(is.null(pData()))
@@ -208,7 +225,8 @@ server <- function(input, output, session) {
                 if(is.null(pData()))
                         return()
                 
-                statList<-names(statSumm())
+                #statList<-names(statSumm())
+                #statList<-statList[-c(1:3)]
                 
                 checkboxGroupInput('stats',NULL,
                                    choices = statList,
@@ -224,7 +242,7 @@ server <- function(input, output, session) {
                 if(is.null(input$locids))
                         return()
                 
-                fData<-pData() %>% filter(Location %in% input$locids,
+                fData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
                                           Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                           Parameter %in% input$params) %>% 
                         arrange(Location,Date)
@@ -237,16 +255,17 @@ server <- function(input, output, session) {
         output$statsData <- renderDataTable({
                 if(is.null(input$locids)|is.null(input$stats))
                         return()
-                sData <- statSumm() %>% select(input$stats)
+                #sData <- statSumm() %>% select(input$stats)
+                sData <- statSumm()
                 return(sData)
         })
         
         statSumm <- reactive({
                 
-                pData() %>% filter(Location %in% input$locids,
+                pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
                                    Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                    Parameter %in% input$params) %>% 
-                        group_by(Parameter,Location) %>% 
+                        group_by(Matrix, Parameter,Location) %>% 
                         summarise(`Number of Observations`=length(Value),
                                   `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
                                   `Minimum Date`=min(Date),
@@ -256,22 +275,27 @@ server <- function(input, output, session) {
                                   `First Quartile`=as.character(ifelse(quantile(Value,0.25)==0,'ND',quantile(Value,0.25))),
                                   `Third Quartile`=as.character(ifelse(quantile(Value,0.75)==0,'ND',quantile(Value,0.75))),
                                   Average=mean(Value),
-                                  `Standard Deviaton`=sd(Value),
-                                  Variance=var(Value))
+                                  `Standard Deviation`=sd(Value),
+                                  Variance=var(Value)) %>% 
+                        select(1:3,input$stats)
                 
         })
         
         
         
-        #Export stats summary table logic for download button------------------
+        #Export stats summary table download button------------------
+        #Output handler
         output$expStats <- downloadHandler(
-                filename = function() {
-                        paste(input$expStatsFilename, ".csv", sep = "")
-                },
-                content = function(file) {
-                        write.csv(statSumm(), file, row.names = FALSE)
-                }
-        )
+                                
+                                filename = function() {
+                                        paste(input$expStatsFilename, ".csv", sep = "")
+                                },
+                                
+                                content = function(file) {
+                                        write.csv(statSumm(), file, row.names = FALSE)
+                                }
+                           )
+     
         
         #Plotting-----------------------------------------------
         #Explore plots--------------------------------

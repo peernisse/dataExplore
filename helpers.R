@@ -1,5 +1,12 @@
 #This script holds helper functions for the data exploration app
 
+#Objects/lists
+statList<-c('Number of Observations','Percent Non-Detect',
+            'Minimum Date','Maximum Date','Minimum','Maximum',
+            'First Quartile','Third Quartile','Average',
+            'Standard Deviation','Variance')
+
+
 #Functions----------------------------------
 #Fix units cases
 fixUnits<-function(x){
