@@ -33,6 +33,7 @@ ui <- fluidPage(
               
               h3("Explore Tools"),
               h5(strong('Choose Matrices')),
+              uiOutput('selectall_matrix'),
               uiOutput('choose_matrix'),
               fluidRow(
                       column(6,
@@ -193,6 +194,16 @@ server <- function(input, output, session) {
         })
         
         #Create matrix picker
+        output$selectall_matrix<-renderUI({
+                if(is.null(pData()))
+                        return()
+                
+                checkboxGroupInput('selectall_mtrx',NULL,
+                                   choices = c('Select All','Clear All'),
+                                   selected = 'Clear All',
+                                   inline = TRUE)
+        })
+        
         output$choose_matrix<-renderUI({
                 if(is.null(pData()))
                         return()
