@@ -29,7 +29,7 @@ How you get your data into the input format is up to you.
 
 **Figure 1.** Screenshot of valid data `.csv` file.
 
-<img src="C:/R_Projects/Shiny/dataExplore/www/importData.png" style="width:80%;"></img>
+<img src="importData.png" style="width:80%;"></img>
 
 
 
