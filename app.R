@@ -3,6 +3,7 @@
 library(shiny)
 library(tidyverse)
 library(markdown)
+library(RODBC)
 options(scipen = 6)
 
 
@@ -29,15 +30,19 @@ ui <- fluidPage(
               
               fileInput("file", label = NULL,accept='.csv'),
               
-              fluidRow(column(4, verbatimTextOutput("value"))),
+              #fluidRow(column(4, verbatimTextOutput("value"))),
+              
+              h3("SQL Query Input"),
+              h5('Coming Soon'),
               
               h3("Explore Tools"),
               h5(strong('Choose Matrices')),
-              uiOutput('selectall_matrix'),
+              actionLink('selectall_Matrix','Select All/ Clear All'),
               uiOutput('choose_matrix'),
               fluidRow(
                       column(6,
                              h5(strong("Choose Locations")),
+                             actionLink("selectall_Locs","Select All/Clear All"),
                              
                              wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 180px",
                                      uiOutput('choose_locs')
@@ -47,6 +52,7 @@ ui <- fluidPage(
                       ),
                       column(6,
                              h5(strong("Choose Parameters")),
+                             actionLink('selectall_Params','Select All/ Clear All'),
                              wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px",
                                        uiOutput('choose_params')
                                        
@@ -88,7 +94,9 @@ ui <- fluidPage(
                                    
                                    fluidRow(
                                            
-                                           column(6, h3('Select Stats to Show'),uiOutput('choose_stats')),
+                                           column(6, h3('Select Stats to Show'),
+                                                  actionLink('selectall_Stats','Select All/ Clear All'),
+                                                  uiOutput('choose_stats')),
                                            column(6,h3('Output this Table to CSV'),
                                                   fluidRow(
                                                           column(6,textInput('expStatsFilename',label=NULL,width = '200px',placeholder = 'enter filename')),
@@ -174,6 +182,19 @@ server <- function(input, output, session) {
         
         #Pickers----------------------------------------------------
         #Create location picker
+        observe({
+                locs<-sort(unique(pData()$Location))
+                if(input$selectall_Locs == 0) return(NULL) 
+                else if (input$selectall_Locs%%2 == 0)
+                {
+                        updateCheckboxGroupInput(session,"locids",NULL,choices=locs)
+                }
+                else
+                {
+                        updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=locs)
+                }
+        })
+        
         output$choose_locs<-renderUI({
                 if(is.null(pData()))
                         return()
@@ -184,6 +205,18 @@ server <- function(input, output, session) {
         })
         
         #Create parameter picker
+        observe({
+                params<-sort(unique(pData()$Parameter))
+                if(input$selectall_Params == 0) return(NULL) 
+                else if (input$selectall_Params%%2 == 0)
+                {
+                        updateCheckboxGroupInput(session,"params",NULL,choices=params)
+                }
+                else
+                {
+                        updateCheckboxGroupInput(session,"params",NULL,choices=params,selected=params)
+                }
+        })
         output$choose_params<-renderUI({
                 if(is.null(pData()))
                         return()
@@ -194,21 +227,24 @@ server <- function(input, output, session) {
         })
         
         #Create matrix picker
-        output$selectall_matrix<-renderUI({
-                if(is.null(pData()))
-                        return()
-                
-                checkboxGroupInput('selectall_mtrx',NULL,
-                                   choices = c('Select All','Clear All'),
-                                   selected = 'Clear All',
-                                   inline = TRUE)
+        observe({
+                matrices<-sort(unique(pData()$Matrix))
+                if(input$selectall_Matrix == 0) return(NULL) 
+                else if (input$selectall_Matrix%%2 == 0)
+                {
+                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,inline = TRUE)
+                }
+                else
+                {
+                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,selected=matrices,inline = TRUE)
+                }
         })
         
         output$choose_matrix<-renderUI({
                 if(is.null(pData()))
                         return()
                 matrices<-sort(unique(pData()$Matrix))
-                
+
                 checkboxGroupInput('mtrx',NULL,
                                    choices = matrices,
                                    selected = matrices,
@@ -232,6 +268,18 @@ server <- function(input, output, session) {
         })
         
         #Create stats table column picker
+        observe({
+                
+                if(input$selectall_Stats == 0) return(NULL) 
+                else if (input$selectall_Stats%%2 == 0)
+                {
+                        updateCheckboxGroupInput(session,"stats",NULL,choices=statList,inline = TRUE)
+                }
+                else
+                {
+                        updateCheckboxGroupInput(session,"stats",NULL,choices=statList,selected=statList,inline = TRUE)
+                }
+        })
         output$choose_stats<-renderUI({
                 if(is.null(pData()))
                         return()
