@@ -37,12 +37,12 @@ ui <- fluidPage(
               
               h3("Explore Tools"),
               h5(strong('Choose Matrices')),
-              actionLink('selectall_Matrix','Select All/ Clear All'),
+              actionLink('selectall_Matrix','Select All | Clear All'),
               uiOutput('choose_matrix'),
               fluidRow(
                       column(6,
                              h5(strong("Choose Locations")),
-                             actionLink("selectall_Locs","Select All/Clear All"),
+                             actionLink("selectall_Locs","Select All | Clear All"),
                              
                              wellPanel(id='locPanel',style = "overflow-y:scroll; max-height: 180px",
                                      uiOutput('choose_locs')
@@ -52,7 +52,7 @@ ui <- fluidPage(
                       ),
                       column(6,
                              h5(strong("Choose Parameters")),
-                             actionLink('selectall_Params','Select All/ Clear All'),
+                             actionLink('selectall_Params','Select All | Clear All'),
                              wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px",
                                        uiOutput('choose_params')
                                        
@@ -95,7 +95,7 @@ ui <- fluidPage(
                                    fluidRow(
                                            
                                            column(6, h3('Select Stats to Show'),
-                                                  actionLink('selectall_Stats','Select All/ Clear All'),
+                                                  actionLink('selectall_Stats','Select All | Clear All'),
                                                   uiOutput('choose_stats')),
                                            column(6,h3('Output this Table to CSV'),
                                                   fluidRow(
@@ -138,6 +138,8 @@ server <- function(input, output, session) {
                 tbl$Date<-as.POSIXct(strptime(tbl$Date,format="%d-%b-%y"))
                 #Fix unit cases
                 tbl$Units<-fixUnits(tbl)
+                #Add units to parameter column
+                tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
                 #Make non detect substitution columns
                 tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,tbl$Value))
                 tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,''))
@@ -145,6 +147,7 @@ server <- function(input, output, session) {
                 return(tbl)
         })
         
+        #Get min and max dates
         baseDates <- reactive({
                 inFile <- input$file
                 
@@ -158,6 +161,8 @@ server <- function(input, output, session) {
                 return(bDates)#This could possibly combined into pData() as a separate output and referenced pData()$bDates
                 
         })
+        
+        
         
         #Buttons-------------------------------------------------
         #Date range refresh button action
@@ -354,7 +359,19 @@ server <- function(input, output, session) {
                                         write.csv(statSumm(), file, row.names = FALSE)
                                 }
                            )
-     
+        
+        #Export data table download button------------------
+        #Output handler
+        output$expData <- downloadHandler(
+                
+                filename = function() {
+                        paste(input$expDataFilename, ".csv", sep = "")
+                },
+                
+                content = function(file) {
+                        write.csv(statSumm(), file, row.names = FALSE)
+                }
+        )     
         
         #Plotting-----------------------------------------------
         #Explore plots--------------------------------
