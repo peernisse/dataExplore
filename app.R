@@ -37,7 +37,7 @@ ui <- fluidPage(
               
               h3("Explore Tools"),
               h5(strong('Choose Matrices')),
-              actionLink('selectall_Matrix','Select All/ Clear All'),
+              actionLink('selectall_Matrix','Select All | Clear All'),
               uiOutput('choose_matrix'),
               fluidRow(
                       column(6,
@@ -52,7 +52,7 @@ ui <- fluidPage(
                       ),
                       column(6,
                              h5(strong("Choose Parameters")),
-                             actionLink('selectall_Params','Select All/ Clear All'),
+                             actionLink('selectall_Params','Select All | Clear All'),
                              wellPanel(id='paramPanel',style = "overflow-y:scroll; max-height: 180px",
                                        uiOutput('choose_params')
                                        
@@ -95,7 +95,7 @@ ui <- fluidPage(
                                    fluidRow(
                                            
                                            column(6, h3('Select Stats to Show'),
-                                                  actionLink('selectall_Stats','Select All/ Clear All'),
+                                                  actionLink('selectall_Stats','Select All | Clear All'),
                                                   uiOutput('choose_stats')),
                                            column(6,h3('Output this Table to CSV'),
                                                   fluidRow(
