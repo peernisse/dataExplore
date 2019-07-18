@@ -10,6 +10,9 @@ options(scipen = 6)
 #Source functions
 source('helpers.R')
 
+#TESTING DATA INPUT
+pData<-read.csv('C:/R_Projects/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
         
@@ -375,12 +378,17 @@ server <- function(input, output, session) {
         
         #Plotting-----------------------------------------------
         #Explore plots--------------------------------
+        
+        
+        #TODO ADD MATRIX CODE TO THE FILTER ARGUMENTS IN THE PLOTS
+        
         output$timeSeriesPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
                 tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                             Parameter %in% input$params))
+                                             Parameter %in% input$params,
+                                             Matrix %in% input$mtrx))
                 tsp<-tsPlot(tsData)
                 return(tsp)
         })
@@ -390,7 +398,8 @@ server <- function(input, output, session) {
                         return()
                 bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                             Parameter %in% input$params))
+                                             Parameter %in% input$params,
+                                             Matrix %in% input$mtrx))
                 bxp<-bxPlot(bxData)
                 return(bxp)
         })
@@ -400,7 +409,8 @@ server <- function(input, output, session) {
                         return()
                 qData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                            Parameter %in% input$params))
+                                            Parameter %in% input$params,
+                                            Matrix %in% input$mtrx))
                 qp<-qPlot(qData)
                 return(qp)
         })
@@ -410,7 +420,8 @@ server <- function(input, output, session) {
                         return()
                 hData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                             Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                            Parameter %in% input$params))
+                                            Parameter %in% input$params,
+                                            Matrix %in% input$mtrx))
                 hp<-hPlot(hData)
                 return(hp)
         })
