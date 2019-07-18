@@ -11,7 +11,7 @@ options(scipen = 6)
 source('helpers.R')
 
 #TESTING DATA INPUT
-pData<-read.csv('C:/R_Projects/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+#pData<-read.csv('C:/R_Projects/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
