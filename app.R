@@ -1,6 +1,7 @@
 #-----------------On Load Component---------------------------
 #Libraries
 library(shiny)
+library(shinyWidgets)
 library(tidyverse)
 library(markdown)
 library(RODBC)
@@ -207,8 +208,11 @@ server <- function(input, output, session) {
         
         #Pickers----------------------------------------------------
         #Create location picker
+        
+        
         observe({
                 locs<-sort(unique(pData()$Location))
+                
                 if(input$selectall_Locs == 0) return(NULL) 
                 else if (input$selectall_Locs%%2 == 0)
                 {
@@ -218,6 +222,7 @@ server <- function(input, output, session) {
                 {
                         updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=locs)
                 }
+                
         })
         
         output$choose_locs<-renderUI({
