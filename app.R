@@ -39,9 +39,23 @@ ui <- fluidPage(
               h5('Coming Soon'),
               
               h3("Explore Tools"),
-              h5(strong('Choose Matrices')),
-              actionLink('selectall_Matrix','Select All | Clear All'),
-              uiOutput('choose_matrix'),
+              
+              fluidRow(
+                    column(6,
+                           h5(strong('Choose Matrices')),
+                           actionLink('selectall_Matrix','Select All | Clear All'),
+                           uiOutput('choose_matrix')     
+                           ),
+                    
+                    column(6,
+                           h5(strong('Choose Sites')),
+                           actionLink('selectall_Sites','Select All | Clear All'),
+                           uiOutput('choose_sites')    
+                    )
+                      
+              ),
+              
+              
               fluidRow(
                       column(6,
                              h5(strong("Choose Locations")),
@@ -128,6 +142,9 @@ ui <- fluidPage(
 #-----------------Server Component----------------------------
 server <- function(input, output, session) {
    
+        #Set options for larger file size import
+        options(shiny.maxRequestSize=50*1024^2)
+        
         #Data import-----------------------------------------
         pData <- reactive({
                 
@@ -258,6 +275,36 @@ server <- function(input, output, session) {
                                    selected = matrices,
                                    inline = TRUE)
         })
+        
+        #Create site picker
+        observe({
+                sites<-sort(unique(pData()$Site))
+                if(input$selectall_Sites == 0) return(NULL) 
+                else if (input$selectall_Sites%%2 == 0)
+                {
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=matrices,inline = TRUE)
+                }
+                else
+                {
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=matrices,selected=matrices,inline = TRUE)
+                }
+        })
+        
+        output$choose_sites<-renderUI({
+                if(is.null(pData()))
+                        return()
+                sites<-sort(unique(pData()$Site))
+                
+                checkboxGroupInput('sts',NULL,
+                                   choices = sites,
+                                   selected = sites,
+                                   inline = TRUE)
+        })
+        
+        
+        
+        
+        
         
         #Create date range input
         output$choose_dates<-renderUI({
