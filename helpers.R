@@ -44,7 +44,8 @@ tsPlot<-function(data){
         g<-ggplot(tsdat,aes(x=Date,y=Result_ND, color=Location))+
                 geom_line(aes(color=Location),size=0.5)+
                 geom_point(size=3)+
-                geom_point(aes(x=Date,y=NonDetect),color="white",size=2)+
+                geom_point(aes(x=Date,y=NonDetect,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
+                scale_fill_manual(values='white')+
                 facet_wrap(~Parameter,scales="free")+
                 theme(legend.position = "bottom", legend.title = element_blank())+
                 theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+

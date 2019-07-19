@@ -25,7 +25,7 @@ ui <- fluidPage(
               h3("File Input"),
               fluidRow(
                       column(12,
-                             p("Your .csv file should have columns: 'Location','Matrix',Date','Parameter','Value','Units',
+                             p("Your .csv file should have columns: 'SiteID','Site','Location','Matrix',Date','Parameter','Value','Units',
                                'DetectionFlag','Reporting_Limit','MDL'")
                              )
                       

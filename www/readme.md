@@ -14,6 +14,8 @@ The data `.csv` file should contain the following columns, additional columns ar
 
 Column Name                |Description
 :--------------------------|:------------------------------------------
+**SiteID**|Site ID number
+**Site**|Site name/description
 **Location**|Character field of location names
 **Matrix**|Field containing the matrix for the record (groundwater, air, soil, etc.)
 **Date**|Date or text, format should be `'DD-MMM-YY'`, strings will be converted to dates
