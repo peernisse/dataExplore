@@ -287,11 +287,11 @@ server <- function(input, output, session) {
                 if(input$selectall_Sites == 0) return(NULL) 
                 else if (input$selectall_Sites%%2 == 0)
                 {
-                        updateCheckboxGroupInput(session,"sts",NULL,choices=matrices,inline = TRUE)
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,inline = TRUE)
                 }
                 else
                 {
-                        updateCheckboxGroupInput(session,"sts",NULL,choices=matrices,selected=matrices,inline = TRUE)
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,selected=sites,inline = TRUE)
                 }
         })
         
