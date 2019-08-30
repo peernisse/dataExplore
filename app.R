@@ -45,13 +45,19 @@ ui <- fluidPage(
                     column(6,
                            h5(strong('Choose Matrices')),
                            actionLink('selectall_Matrix','Select All | Clear All'),
-                           uiOutput('choose_matrix')     
+                           wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px",
+                                     uiOutput('choose_matrix')
+                                )
+                              
                            ),
                     
                     column(6,
                            h5(strong('Choose Sites')),
                            actionLink('selectall_Sites','Select All | Clear All'),
-                           uiOutput('choose_sites')    
+                           wellPanel(id='sitePanel',style = "overflow-y:scroll; max-height: 180px",
+                                     uiOutput('choose_sites')
+                                        )
+                               
                     )
                       
               ),
@@ -208,12 +214,32 @@ server <- function(input, output, session) {
         
         #Pickers----------------------------------------------------
         #Create location picker
-        
-        
-        observe({
-                locs<-sort(unique(pData()$Location))
+        #This loads up by default with no choices available
+        output$choose_locs<-renderUI({
                 
-                if(input$selectall_Locs == 0) return(NULL) 
+                 if(is.null(pData()))
+                         return()
+                 locs<-sort(unique(pData()$Location))
+                
+                checkboxGroupInput('locids',NULL,
+                                   choices = locs,
+                                   selected = NULL)
+        })
+        
+        #THis listens for values selected in other checkbox groups and changes accordingly 
+        observe({
+                
+                if(is.null(pData()))
+                        return()
+                lulocs<-pData() %>% filter(Site %in% input$sts,Matrix %in% input$mtrx)
+                locs<-sort(unique(lulocs$Location))
+                
+                
+
+                if(input$selectall_Locs == 0) 
+                {
+                        updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=NULL)
+                }
                 else if (input$selectall_Locs%%2 == 0)
                 {
                         updateCheckboxGroupInput(session,"locids",NULL,choices=locs)
@@ -222,18 +248,13 @@ server <- function(input, output, session) {
                 {
                         updateCheckboxGroupInput(session,"locids",NULL,choices=locs,selected=locs)
                 }
-                
+
         })
+
         
-        output$choose_locs<-renderUI({
-                if(is.null(pData()))
-                        return()
-                locs<-sort(unique(pData()$Location))
+        
+        
                 
-                checkboxGroupInput('locids',NULL,
-                                   choices = locs)
-        })
-        
         #Create parameter picker
         observe({
                 params<-sort(unique(pData()$Parameter))
@@ -262,11 +283,11 @@ server <- function(input, output, session) {
                 if(input$selectall_Matrix == 0) return(NULL) 
                 else if (input$selectall_Matrix%%2 == 0)
                 {
-                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,inline = TRUE)
+                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,inline = FALSE)
                 }
                 else
                 {
-                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,selected=matrices,inline = TRUE)
+                        updateCheckboxGroupInput(session,"mtrx",NULL,choices=matrices,selected=matrices,inline = FALSE)
                 }
         })
         
@@ -277,8 +298,8 @@ server <- function(input, output, session) {
 
                 checkboxGroupInput('mtrx',NULL,
                                    choices = matrices,
-                                   selected = matrices,
-                                   inline = TRUE)
+                                   selected = NULL,
+                                   inline = FALSE)
         })
         
         #Create site picker
@@ -287,11 +308,11 @@ server <- function(input, output, session) {
                 if(input$selectall_Sites == 0) return(NULL) 
                 else if (input$selectall_Sites%%2 == 0)
                 {
-                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,inline = TRUE)
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,inline = FALSE)
                 }
                 else
                 {
-                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,selected=sites,inline = TRUE)
+                        updateCheckboxGroupInput(session,"sts",NULL,choices=sites,selected=sites,inline = FALSE)
                 }
         })
         
@@ -302,8 +323,8 @@ server <- function(input, output, session) {
                 
                 checkboxGroupInput('sts',NULL,
                                    choices = sites,
-                                   selected = sites,
-                                   inline = TRUE)
+                                   selected = NULL,
+                                   inline = FALSE)
         })
         
         
@@ -327,7 +348,7 @@ server <- function(input, output, session) {
                 
         })
         
-        #Create stats table column picker
+        #Create stats table column picker-----------------
         observe({
                 
                 if(input$selectall_Stats == 0) return(NULL) 
@@ -354,8 +375,8 @@ server <- function(input, output, session) {
                 
         })
         
-        #Data table output
-        #Raw data------------------------------
+        #Data table output-------------------
+        #Raw data
         
         output$tblData <- renderDataTable({
                 if(is.null(input$locids))
@@ -363,7 +384,7 @@ server <- function(input, output, session) {
                 
                 fData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
                                           Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                                          Parameter %in% input$params) %>% 
+                                          Parameter %in% input$params, Site %in% input$sts) %>% 
                         arrange(Location,Date)
                 fData$Date<-as.character(fData$Date)
                 
