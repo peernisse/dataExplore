@@ -106,7 +106,10 @@ ui <- fluidPage(
               tabsetPanel(type = "tabs",
                           
                           tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
-                          tabPanel("Explore Plots", 
+                          tabPanel("Explore Plots",
+                                        h5('Swap Faceting Variables'),
+                                        checkboxGroupButtons('tsSwap',choices = c('Parameter','Location'),#TODO put this in the server side and add listener to unselect the other button after selection
+                                                             selected='Parameter'),
                                         plotOutput("timeSeriesPlot"),
                                         plotOutput("boxPlot"),
                                         plotOutput("qPlot"),
