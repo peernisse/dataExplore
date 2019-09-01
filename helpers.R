@@ -38,15 +38,17 @@ perND<-function(x,ndChar = 0){
 
 #Plot functionss--------------------------------
 
-tsPlot<-function(data){
+tsPlot<-function(data,tsf,col){
         tsdat<-as.data.frame(data)
+        tsFacet<-tsf
+        clr<-col
         tsdat$Parameter<-paste0(tsdat$Parameter," (",tsdat$Units,")")
-        g<-ggplot(tsdat,aes(x=Date,y=Result_ND, color=Location))+
-                geom_line(aes(color=Location),size=0.5)+
-                geom_point(size=3)+
+        g<-ggplot(tsdat,aes(x=Date,y=Result_ND))+
+                geom_line(aes_string(colour=clr),size=0.5)+
+                geom_point(aes_string(colour=clr),size=3)+
                 geom_point(aes(x=Date,y=NonDetect,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
                 scale_fill_manual(values='white')+
-                facet_wrap(~Parameter,scales="free")+
+                facet_wrap(as.formula(paste('~',tsFacet)),scales="free")+
                 theme(legend.position = "bottom", legend.title = element_blank())+
                 theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
                 labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
