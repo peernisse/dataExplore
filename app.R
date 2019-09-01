@@ -4,7 +4,7 @@ library(shiny)
 library(shinyWidgets)
 library(tidyverse)
 library(markdown)
-library(RODBC)
+#library(RODBC)
 options(scipen = 6)
 
 
@@ -12,7 +12,7 @@ options(scipen = 6)
 source('helpers.R')
 
 #TESTING DATA INPUT
-#pData<-read.csv('C:/R_Projects/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
@@ -23,7 +23,7 @@ ui <- fluidPage(
    # Data input and plot parameter tools on left
    sidebarLayout(
         sidebarPanel(
-              h3("File Input"),
+              h3("CSV File Input"),
               fluidRow(
                       column(12,
                              p("Your .csv file should have columns: 'SiteID','Site','Location','Matrix',Date','Parameter','Value','Units',
@@ -32,12 +32,9 @@ ui <- fluidPage(
                       
               ),
               
-              fileInput("file", label = NULL,accept='.csv'),
+              fileInput("file", buttonLabel = 'Choose File',label = 'Loading may take some time',accept='.csv'),
               
               #fluidRow(column(4, verbatimTextOutput("value"))),
-              
-              h3("SQL Query Input"),
-              h5('Coming Soon'),
               
               h3("Explore Tools"),
               
@@ -107,11 +104,16 @@ ui <- fluidPage(
                           
                           tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
                           tabPanel("Explore Plots",
-                                        h5('Swap Faceting Variables'),
-                                        checkboxGroupButtons('tsSwap',choices = c('Parameter','Location'),#TODO put this in the server side and add listener to unselect the other button after selection
-                                                             selected='Parameter'),
-                                        plotOutput("timeSeriesPlot"),
-                                        plotOutput("boxPlot"),
+                                        h4('Swap Faceting Variables'),
+                                        uiOutput('tsFacetSwap'),
+                                        hr(),
+                                        h4('Click Plot Points for More Info'),
+                                        dataTableOutput("plot_clickinfo"),
+                                        plotOutput("timeSeriesPlot",click = 'tsClick'),
+                                        hr(),
+                                        h4('Click Plot Boxes for More Info'),
+                                        dataTableOutput("bplot_clickinfo"),
+                                        plotOutput("boxPlot",click = 'bxClick'),
                                         plotOutput("qPlot"),
                                         plotOutput("hPlot")
                           ),
@@ -211,9 +213,12 @@ server <- function(input, output, session) {
                              height:30px; margin:1px")
         })
         
-        #Update locations and parameters checkboxes
+        #Swap plot faceting variable picklist
+        output$tsFacetSwap<-renderUI({
+                pickerInput('tsSwap',choices = c('Parameter','Location'),#TODO put this in the server side and add listener to unselect the other button after selection
+                                     selected='Parameter') 
         
-        #Create locations and parameters checkboxes button
+        })
         
         #Pickers----------------------------------------------------
         #Create location picker
@@ -301,7 +306,7 @@ server <- function(input, output, session) {
 
                 checkboxGroupInput('mtrx',NULL,
                                    choices = matrices,
-                                   selected = NULL,
+                                   selected = matrices[1],
                                    inline = FALSE)
         })
         
@@ -326,7 +331,7 @@ server <- function(input, output, session) {
                 
                 checkboxGroupInput('sts',NULL,
                                    choices = sites,
-                                   selected = NULL,
+                                   selected = sites[1],
                                    inline = FALSE)
         })
         
@@ -457,29 +462,141 @@ server <- function(input, output, session) {
         
         
         #TODO ADD MATRIX CODE TO THE FILTER ARGUMENTS IN THE PLOTS
-        
+        #Timeseries plots------
         output$timeSeriesPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
+                
+                if(input$tsSwap=='Parameter'){
+                        tsFacet<-'Parameter'
+                        col<- 'Location'
+                        
+                }
+                if(input$tsSwap=='Location'){
+                        tsFacet<-'Location'
+                        col<- 'Parameter'
+                        
+                }
+                
+                
                 tsData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                              Parameter %in% input$params,
                                              Matrix %in% input$mtrx))
-                tsp<-tsPlot(tsData)
-                return(tsp)
+                #tsp<-tsPlot(tsData,tsFacet,col)
+
+                #return(tsp)
+                
+                #testing ggplot login inside this instead of function
+                ggplot(tsData,aes(x=Date,y=Result_ND))+
+                        geom_line(aes_string(colour=col),size=0.5)+
+                        geom_point(aes_string(colour=col),size=3)+
+                        geom_point(aes(x=Date,y=NonDetect,fill='Non-Detect at 1/2 MDL'),shape=21,size=2)+
+                        scale_fill_manual(values='white')+
+                        facet_wrap(as.formula(paste('~',tsFacet)),scales="free")+
+                        theme(legend.position = "bottom", legend.title = element_blank())+
+                        theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+                        labs(x="Date",y="Value",title="Time Series Non-Detects Hollow at 1/2 the Reporting Limit")+
+                        theme(plot.title = element_text(face='bold',size=14))
+                
+                
+                
         })
         
+        tsData2<-reactive({
+                filter(pData(),Location %in% input$locids,
+                       Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                       Parameter %in% input$params,
+                       Matrix %in% input$mtrx) %>% 
+                        select(Site,Location,Date,Matrix,Parameter,DetectionFlag,Result_ND,Reporting_Limit,MDL)
+        })
+        
+        #Time series info boxes
+        output$plot_clickinfo <- renderDataTable({
+                
+                #nearPoints(pData(), input$tsClick,threshold = 10)
+                
+                res <- nearPoints(tsData2(), input$tsClick,threshold = 3,maxpoints = 1)
+                
+                if (nrow(res) == 0)
+                        return()
+                res
+        })
+        
+        
+        
+        #Boxplots------
         output$boxPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
+                
+                if(input$tsSwap=='Parameter'){
+                        bxFacet<-'Parameter'
+                        bxCol<- 'Location'
+                        
+                }
+                if(input$tsSwap=='Location'){
+                        bxFacet<-'Location'
+                        bxCol<- 'Parameter'
+                        
+                }
+                
+                
+                
+                
                 bxData<-as.data.frame(filter(pData(),Location %in% input$locids,
                                              Date >= input$dtRng[1] & Date<=input$dtRng[2],
                                              Parameter %in% input$params,
                                              Matrix %in% input$mtrx))
-                bxp<-bxPlot(bxData)
-                return(bxp)
+                # bxp<-bxPlot(bxData)
+                # return(bxp)
+                
+                ggplot(bxData,aes(x=Location,y=Value))+
+                        geom_boxplot(aes_string(fill=bxCol))+
+                        #geom_jitter(color="black")+
+                        #geom_jitter(aes(x=Location,y=NonDetect),color="white")+
+                        facet_wrap(as.formula(paste('~',bxFacet)), scales="free")+
+                        theme(strip.background = element_rect(fill = '#727272'),strip.text = element_text(colour='white',face='bold',size = 12))+
+                        theme(legend.position = "bottom", legend.title = element_blank())+
+                        labs(x="Location",y="Value",title="Boxplots Non-Detects at Zero")+
+                        theme(plot.title = element_text(face='bold',size=14))
+                
+                
         })
         
+        bxData2<-reactive({pData() %>% filter(Location %in% input$locids,
+                                     Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                     Parameter %in% input$params,
+                                     Matrix %in% input$mtrx) %>% 
+                        group_by(Location,Parameter) %>% 
+                        summarize(
+                                
+                                `Percent Non-Detect`=round(perND(DetectionFlag,'ND'),0),
+                                `Minimum Date`=min(Date),
+                                `Maximum Date`=max(Date),
+                                Minimum=as.character(ifelse(min(Value)==0,'ND',min(Value))),
+                                `First Quartile`=as.character(ifelse(quantile(Value,0.25)==0,'ND',quantile(Value,0.25))),
+                                Mean=mean(Value),
+                                Median=median(Value),
+                                `Third Quartile`=as.character(ifelse(quantile(Value,0.75)==0,'ND',quantile(Value,0.75))),
+                                Maximum=max(Value),
+                                Value = mean(Value)   
+                        ) %>% as.data.frame(.)
+                })
+        
+        #Boxplot info box table
+        output$bplot_clickinfo <- renderDataTable({
+                
+                #nearPoints(pData(), input$tsClick,threshold = 10)
+                
+                bres <- nearPoints(bxData2(), input$bxClick,threshold = 50,maxpoints = 1)
+                
+                if (nrow(bres) == 0)
+                        return()
+                bres
+        })
+        
+        #QQ Plots------------
         output$qPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
