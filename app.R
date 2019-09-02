@@ -13,7 +13,7 @@ source('helpers.R')
 
 #TESTING DATA INPUT
 
-#pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
 
 #-----------------UI Component--------------------------------
@@ -119,7 +119,25 @@ ui <- fluidPage(
                                         plotOutput("qPlot"),
                                         plotOutput("hPlot")
                           ),
-                          tabPanel("Multiple Plots","Coming Soon"),
+                          tabPanel("Regression",
+                                   
+                                   fluidRow(
+                                           h2('Regression Tools'),
+                                           p('This tool allows for linear regression of 
+                                             selected variables. Select the independent (x)
+                                             variable and the dependent (y) variable.')
+                                   ),
+                                   fluidRow(
+                                           column(3,uiOutput('regX')),
+                                           column(3,uiOutput('regY'))
+                                   ),
+                                   fluidRow(
+                                           
+                                           plotOutput('rPlot')
+                                   )
+                                   
+                                   
+                                   ),
                           
                           tabPanel("Stats",
                                    
@@ -217,7 +235,7 @@ server <- function(input, output, session) {
         
         #Swap plot faceting variable picklist
         output$tsFacetSwap<-renderUI({
-                pickerInput('tsSwap',choices = c('Parameter','Location'),#TODO put this in the server side and add listener to unselect the other button after selection
+                pickerInput('tsSwap',choices = c('Parameter','Location'),
                                      selected='Parameter') 
         
         })
@@ -262,9 +280,6 @@ server <- function(input, output, session) {
         })
 
         
-        
-        
-                
         #Create parameter picker
         observe({
                 params<-sort(unique(pData()$Parameter))
@@ -338,10 +353,6 @@ server <- function(input, output, session) {
         })
         
         
-        
-        
-        
-        
         #Create date range input
         output$choose_dates<-renderUI({
                 if(is.null(pData()))
@@ -384,6 +395,45 @@ server <- function(input, output, session) {
                                    inline = TRUE)
                 
         })
+        
+        
+        #Create regression tool parameter picker-----
+        observe({
+                
+                #if(is.null(input$params)) return(NULL)
+                
+                #if (input$selectall_Params == 0) return(NULL)
+                
+                if (input$selectall_Params%%2 == 0)
+                {
+                        updatePickerInput(session,'regrX',choices='')
+                        updatePickerInput(session,'regrY',choices='')
+                }
+                
+                else if(input$selectall_Params%%2 == 1)
+                {
+                        updatePickerInput(session,'regrX',choices=c('Date',input$params),
+                                          selected='Date')
+                        updatePickerInput(session,'regrY',choices=input$params)
+                } 
+                
+                
+                
+        })
+        
+        
+        
+        output$regX<-renderUI({
+                pickerInput('regrX',choices=input$params)
+                
+        })
+        
+        output$regY<-renderUI({
+                pickerInput('regrY',choices=input$params)
+                
+        })
+        
+        
         
         #Data table output-------------------
         #Raw data
@@ -610,6 +660,7 @@ server <- function(input, output, session) {
                 return(qp)
         })
         
+        #Histograms-------------
         output$hPlot <- renderPlot({
                 if(is.null(input$locids))
                         return()
@@ -621,7 +672,39 @@ server <- function(input, output, session) {
                 return(hp)
         })
         
-        #Looped plots on a page
+        #Regression plot------------------------
+        
+        output$rPlot<-renderPlot({
+                
+                if(is.null(input$regrX)) return()
+                
+                rData<-pData() %>%
+                        filter(Location %in% input$locids,
+                               Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                               Parameter %in% input$params,
+                               Matrix %in% input$mtrx) %>% 
+                        select(Location,Date,Parameter,Result_ND) %>% 
+                        arrange(Location,Parameter,Date) %>% 
+                        as.data.frame(.)
+                
+                rX<-ifelse(
+                        input$regrX=='Date',
+                        as.vector(sort(rData$Date)),
+                        rData %>% filter(Parameter == input$regrX) %>% 
+                                pull(Result_ND)
+                                
+                )
+                
+                rY<- rData %>% filter(Parameter == input$regrY) %>% 
+                                pull(Result_ND)
+                
+                rX<-sample(rX,10,replace=TRUE)
+                rY<-sample(rY,10,replace=TRUE)
+                
+        #rY<-rnorm(100,5,2)
+        #rX<-seq(1:100)              
+               plot(rY~rX) 
+        })
         
         
         
