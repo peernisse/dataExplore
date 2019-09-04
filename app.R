@@ -13,8 +13,10 @@ source('helpers.R')
 
 #TESTING DATA INPUT
 
-pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+#pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
+#Demo data frame
+#demoData<-read.csv('demoData.csv',stringsAsFactors = FALSE)
 
 #-----------------UI Component--------------------------------
 ui <- fluidPage(
@@ -29,15 +31,19 @@ ui <- fluidPage(
               fluidRow(
                       column(12,
                              p("Your .csv file should have columns: 'SiteID','Site','Location','Matrix',Date','Parameter','Value','Units',
-                               'DetectionFlag','Reporting_Limit','MDL'")
+                               'DetectionFlag','ReportingLimit','MDL'")
                              )
                       
               ),
+              hr(),
               
-              fileInput("file", buttonLabel = 'Choose File',label = 'Loading may take some time',accept='.csv'),
+              fileInput("file", buttonLabel = 'Choose File',label=NULL,placeholder = 'Loading may take some time',accept='.csv'),
               
-              #fluidRow(column(4, verbatimTextOutput("value"))),
+              h4('Or'),
               
+              actionButton(inputId = 'demoLoad',label = 'Load Demo Data'),
+              
+              hr(),
               h3("Explore Tools"),
               
               fluidRow(
@@ -178,12 +184,34 @@ server <- function(input, output, session) {
         options(shiny.maxRequestSize=50*1024^2)
         
         #Data import-----------------------------------------
+        #Demo data load-------------------
+        
+        
+       
+        #File input load--------------
         pData <- reactive({
                 
-                inFile <- input$file
+                if(input$demoLoad == 0) {
+                        inFile <- input$file
+                }
+                        
+                if(input$demoLoad > 0){
+                        
+                        inFile<-data.frame(
+                               name='demoData',
+                               size=1413000,
+                               type='csv',
+                               datapath='./data/demoData.csv'
+                        )
+                        
+                        inFile$datapath<-as.character(inFile$datapath)
+                }
+                
                 
                 if (is.null(inFile))
                         return(NULL)
+                
+                
                 #Read in table
                 tbl <- read.csv(inFile$datapath, header=TRUE, stringsAsFactors = FALSE)
                 #Fix date format
@@ -193,15 +221,29 @@ server <- function(input, output, session) {
                 #Add units to parameter column
                 tbl$Parameter<-paste0(tbl$Parameter,' (',tbl$Units,')')
                 #Make non detect substitution columns
-                tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,tbl$Value))
-                tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$Reporting_Limit*0.5,''))
+                tbl$Result_ND<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,tbl$Value))
+                tbl$NonDetect<-as.numeric(ifelse(tbl$DetectionFlag=='ND',tbl$ReportingLimit*0.5,''))
                 
                 return(tbl)
         })
         
         #Get min and max dates
         baseDates <- reactive({
-                inFile <- input$file
+                if(input$demoLoad == 0) {
+                        inFile <- input$file
+                }
+                
+                if(input$demoLoad > 0){
+                        
+                        inFile<-data.frame(
+                                name='demoData',
+                                size=1413000,
+                                type='csv',
+                                datapath='./data/demoData.csv'
+                        )
+                        
+                        inFile$datapath<-as.character(inFile$datapath)
+                }
                 
                 if (is.null(inFile))
                         return(NULL)
@@ -219,6 +261,7 @@ server <- function(input, output, session) {
         #Buttons-------------------------------------------------
         #Date range refresh button action
         observeEvent(input$clrDates,{
+                
                 updateDateRangeInput(session,inputId = 'dtRng', start = baseDates()[1], end = baseDates()[2])
         })
         
@@ -424,7 +467,7 @@ server <- function(input, output, session) {
         
         
         output$regX<-renderUI({
-                pickerInput('regrX',choices=input$params)
+                pickerInput('regrX',choices=c('Date',input$params))
                 
         })
         
@@ -560,7 +603,7 @@ server <- function(input, output, session) {
                        Date >= input$dtRng[1] & Date<=input$dtRng[2],
                        Parameter %in% input$params,
                        Matrix %in% input$mtrx) %>% 
-                        select(Site,Location,Date,Matrix,Parameter,DetectionFlag,Result_ND,Reporting_Limit,MDL)
+                        select(Site,Location,Date,Matrix,Parameter,DetectionFlag,Result_ND,ReportingLimit,MDL)
         })
         
         #Time series info boxes
