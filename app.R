@@ -13,8 +13,8 @@ source('helpers.R')
 
 #TESTING DATA INPUT
 
-#pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
-
+#pData<-read.csv('C:\\Users\\peernisse\\Desktop\\deleteme\\deleteme\\oldDominionSW.csv',stringsAsFactors = FALSE)
+#tbl<-pData
 #Demo data frame
 #demoData<-read.csv('demoData.csv',stringsAsFactors = FALSE)
 
