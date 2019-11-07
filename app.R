@@ -4,6 +4,7 @@ library(shiny)
 library(shinyWidgets)
 library(tidyverse)
 library(markdown)
+library(data.table)
 #library(RODBC)
 options(scipen = 6)
 
@@ -110,7 +111,9 @@ ui <- fluidPage(
          
               tabsetPanel(type = "tabs",
                           
-                          tabPanel("Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
+                          tabPanel("Long Data Table", tags$div(dataTableOutput('tblData'),style="height=600px")),
+                          tabPanel('Reporter Table',tags$div(dataTableOutput('tblDataW'),style="height=600px")),
+                          
                           tabPanel("Explore Plots",
                                         h4('Swap Faceting Variables'),
                                         uiOutput('tsFacetSwap'),
@@ -479,7 +482,7 @@ server <- function(input, output, session) {
         
         
         #Data table output-------------------
-        #Raw data
+        #Output for long format data table
         
         output$tblData <- renderDataTable({
                 if(is.null(input$locids))
@@ -491,8 +494,33 @@ server <- function(input, output, session) {
                         arrange(Location,Date)
                 fData$Date<-as.character(fData$Date)
                 
-                return(fData)
+                return(unique(fData))
         })
+        
+        #Output for wide data format table
+        
+        output$tblDataW<-renderDataTable({
+                
+                if(is.null(input$locids))
+                        return()
+                
+                wData<-pData() %>% filter(Location %in% input$locids,Matrix %in% input$mtrx,
+                                          Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                                          Parameter %in% input$params, Site %in% input$sts) %>% 
+                        arrange(Location,Date)
+                wData$Date<-as.character(wData$Date)
+                
+                wData<-data.table::dcast(unique(wData),Parameter~Location+Date,fun.aggregate=max,value.var='Result_ND')
+                
+                
+                
+                return(wData)
+                
+        })
+        
+        
+        
+        
         
         #Stats summary data table---------------------------
         output$statsData <- renderDataTable({
