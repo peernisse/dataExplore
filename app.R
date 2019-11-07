@@ -14,7 +14,7 @@ source('helpers.R')
 
 #TESTING DATA INPUT
 
-#pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
 #Demo data frame
 #demoData<-read.csv('demoData.csv',stringsAsFactors = FALSE)
@@ -758,16 +758,39 @@ server <- function(input, output, session) {
                         arrange(Location,Parameter,Date) %>% 
                         as.data.frame(.)
                 
-                rX<-ifelse(
-                        input$regrX=='Date',
-                        as.vector(sort(rData$Date)),
-                        rData %>% filter(Parameter == input$regrX) %>% 
+                if(input$regrX=='Date'){
+                        rX<-rData %>% 
+                                arrange(as.Date(Date)) %>% 
+                                pull(Date)
+                        
+                        rY<- rData %>% filter(Parameter == input$regrY) %>% 
+                                arrange(Date) %>% 
                                 pull(Result_ND)
-                                
-                )
+                } else
                 
-                rY<- rData %>% filter(Parameter == input$regrY) %>% 
-                                pull(Result_ND)
+                if(input$regrX!='Date'){
+                        
+                       rX<- rData %>% filter(Parameter == input$regrX) %>% 
+                                pull(Result_ND)  
+                       rY<- rData %>% filter(Parameter == input$regrY) %>% 
+                               pull(Result_ND)
+                       
+                }
+                
+                # 
+                # rX<-ifelse(
+                #         input$regrX=='Date',
+                #         rData %>% pull(Date) %>% sort(),
+                #         rData %>% filter(Parameter == input$regrX) %>% 
+                #                 pull(Result_ND)
+                #                 
+                # )
+                
+                # rY<- rData %>% filter(Parameter == input$regrY) %>% 
+                #                 pull(Result_ND)
+                
+                lgs<-c(length(rX),length(rY))
+                
                 
                 rX<-sample(rX,10,replace=TRUE)
                 rY<-sample(rY,10,replace=TRUE)
