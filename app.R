@@ -15,7 +15,10 @@ source('helpers.R')
 #TESTING DATA INPUT
 
 
-pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+#pData<-read.csv('C:/R_Projects/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
+
+
+#pData<-read.csv('C:/Shiny/data/cerroVerde_GW.csv',stringsAsFactors = FALSE)
 
 #pData<-read.csv('C:\\Users\\peernisse\\Desktop\\deleteme\\deleteme\\oldDominionSW.csv',stringsAsFactors = FALSE)
 #tbl<-pData
@@ -134,20 +137,27 @@ ui <- fluidPage(
                           ),
                           tabPanel("Regression",
                                    
-                                   fluidRow(
-                                           h2('Regression Tools'),
-                                           p('This tool allows for linear regression of 
-                                             selected variables. Select the independent (x)
-                                             variable and the dependent (y) variable.')
-                                   ),
-                                   fluidRow(
-                                           column(3,uiOutput('regX')),
-                                           column(3,uiOutput('regY'))
-                                   ),
-                                   fluidRow(
-                                           
-                                           plotOutput('rPlot')
-                                   )
+                                           fluidRow(
+                                                   h2('Regression Tools'),
+                                                   p('This tool allows for linear regression of 
+                                                     selected variables. Select the independent (x)
+                                                     variable and the dependent (y) variable.')
+                                           ),
+                                           fluidRow(
+                                                   
+                                                   column(3,h3("X Axis Variable"),uiOutput('regX')),
+                                                   column(3,h3('Y Axis Variable'),uiOutput('regY'))
+                                           ),
+                                           fluidRow(
+                                                   
+                                                   plotOutput('rPlot')
+                                           ),
+                                        
+                                          fluidRow(
+                                                  h3('Model Statistics'),
+                                                  tableOutput('rTbl')
+                                                  
+                                           )
                                    
                                    
                                    ),
@@ -753,6 +763,102 @@ server <- function(input, output, session) {
                 
                 if(is.null(input$regrX)) return()
                 
+                #Testing version comment out to run app--------------------------
+                # rData<-pData %>%
+                #         # filter(Location %in% input$locids,
+                #         #        Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                #         #        Parameter %in% input$params,
+                #         #        Matrix %in% input$mtrx) %>% 
+                #         mutate(Date=as.Date(Date,format="%d-%b-%y"),
+                #                Result_ND=as.numeric(ifelse(DetectionFlag=='ND',ReportingLimit*0.5,Value))) %>% 
+                #         select(Location,Date,Parameter,Result_ND) %>% 
+                #         arrange(Location,Parameter,Date) %>% 
+                #         as.data.frame(.)
+                        
+                #----------------------------------------------------------
+                
+                rData<-pData() %>%
+                        filter(Location %in% input$locids,
+                               Date >= input$dtRng[1] & Date<=input$dtRng[2],
+                               Parameter %in% input$params,
+                               Matrix %in% input$mtrx) %>%
+                        select(Location,Date,Parameter,Result_ND) %>%
+                        arrange(Location,Parameter,Date) %>%
+                        as.data.frame(.)
+                
+                if(input$regrX=='Date'){
+                        rX<-rData %>% 
+                                filter(Parameter == input$regrY) %>% 
+                                arrange(as.Date(Date)) %>% 
+                                pull(Date)
+                        
+                        rY<- rData %>% filter(Parameter == input$regrY) %>% 
+                                arrange(Date) %>% 
+                                pull(Result_ND)
+                        
+                        pdata<-data.frame(rX=rX,rY=rY)
+                        
+                        xLab<-'Date'
+                        yLab<-unique(input$regrY)
+                        
+                } else
+                
+                if(input$regrX!='Date'){
+                        
+                        #Loop troubleshoot area---------------------------------
+                        # setup<-rData %>% 
+                        #         filter(Parameter %in% c('Arsenic','Copper')) %>% 
+                        #         select(Location, Date,Parameter,Result_ND)
+                        # 
+                        # setup$Parameter<-factor(setup$Parameter,levels=c('Arsenic','Copper'))
+                        # 
+                        # xLab<-'X'
+                        # yLab<-'Y'
+                        ##########################################################################
+                        
+                       setup<-rData %>% 
+                               filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
+                               select(Location,Date,Parameter,Result_ND)
+                        
+                        setup$Parameter<-factor(setup$Parameter,levels=c(input$regrY,input$regrX))
+                       
+                       pdata<-data.table::dcast(setup,Location+Date~Parameter,value.var='Result_ND',fun.aggregate=mean)
+                       
+                       pdata<-pdata %>% mutate(chk=complete.cases(.)) %>% filter(chk!=FALSE)
+                       
+                       names(pdata)<-c('Location','Date','rY','rX','CHECK')
+                       
+                       
+                       
+                       
+                       xLab<-unique(input$regrX)
+                       yLab<-unique(input$regrY)
+                       
+                }
+                
+                
+                # mdl<-lm(rY~rX,data=pdata)
+                # plot(rY~rX,data=pdata,xlab=xLab,ylab=yLab,pch=19,main=paste('Regression of',yLab,'vs',xLab))
+                # if(input$regrX=='Date'){lines(rY~rX,data=pdata,lty='dashed')}
+                # abline(mdl)
+                
+                g<-ggplot(pdata,aes(x=rX,y=rY))+
+                        geom_smooth(method='lm')+
+                        geom_point()+
+                        labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab))
+                g
+                
+                
+                
+        })#output$rPlot
+        
+        #Regression model output-------------------
+        
+        output$rTbl<-renderTable({
+                
+                
+                if(is.null(input$regrX)) return()
+                
                 rData<-pData() %>%
                         filter(Location %in% input$locids,
                                Date >= input$dtRng[1] & Date<=input$dtRng[2],
@@ -764,47 +870,72 @@ server <- function(input, output, session) {
                 
                 if(input$regrX=='Date'){
                         rX<-rData %>% 
+                                filter(Parameter == input$regrY) %>% 
                                 arrange(as.Date(Date)) %>% 
                                 pull(Date)
                         
                         rY<- rData %>% filter(Parameter == input$regrY) %>% 
                                 arrange(Date) %>% 
                                 pull(Result_ND)
-                } else
-                
-                if(input$regrX!='Date'){
                         
-                       rX<- rData %>% filter(Parameter == input$regrX) %>% 
-                                pull(Result_ND)  
-                       rY<- rData %>% filter(Parameter == input$regrY) %>% 
-                               pull(Result_ND)
-                       
-                }
+                        pdata<-data.frame(rX=rX,rY=rY)
+                        
+                        xLab<-'Date'
+                        yLab<-unique(input$regrY)
+                        
+                } else
+                        
+                        if(input$regrX!='Date'){
+                                
+                                
+                                #Loop troubleshoot area---------------------------------
+                                # setup<-rData %>% 
+                                #         filter(Parameter %in% c('Arsenic','Copper')) %>% 
+                                #         select(Location, Date,Parameter,Result_ND)
+                                # 
+                                # setup$Parameter<-factor(setup$Parameter,levels=c('Arsenic','Copper'))
+                                # 
+                                # xLab<-'X'
+                                # yLab<-'Y'
+                                ##########################################################################
+                                
+                                setup<-rData %>% 
+                                        filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
+                                        select(Location,Date,Parameter,Result_ND)
+                                
+                                setup$Parameter<-factor(setup$Parameter,levels=c(input$regrY,input$regrX))
+                                
+                                pdata<-data.table::dcast(setup,Location+Date~Parameter,value.var='Result_ND',fun.aggregate=mean)
+                                
+                                pdata<-pdata %>% mutate(chk=complete.cases(.)) %>% filter(chk!=FALSE)
+                                
+                                names(pdata)<-c('Location','Date','rY','rX','CHECK')
+                                
+                                
+                                
+                                
+                                xLab<-unique(input$regrX)
+                                yLab<-unique(input$regrY)
+                                
+                        }
                 
-                # 
-                # rX<-ifelse(
-                #         input$regrX=='Date',
-                #         rData %>% pull(Date) %>% sort(),
-                #         rData %>% filter(Parameter == input$regrX) %>% 
-                #                 pull(Result_ND)
-                #                 
-                # )
+                mdl<-lm(rY~rX,data=pdata)
                 
-                # rY<- rData %>% filter(Parameter == input$regrY) %>% 
-                #                 pull(Result_ND)
+                ###########################################################################
+                #Testing output keep commented out unless testing
                 
-                lgs<-c(length(rX),length(rY))
+                # mdl<-lm(iris$Sepal.Length~iris$Sepal.Width)
+                # broom::glance(mdl)
                 
                 
-                rX<-sample(rX,10,replace=TRUE)
-                rY<-sample(rY,10,replace=TRUE)
+                ############################################################################
                 
-        #rY<-rnorm(100,5,2)
-        #rX<-seq(1:100)              
-               plot(rY~rX) 
-        })
-        
-        
+                mdlstats<-broom::glance(mdl)
+                
+                
+                mdlstats
+                
+        })#output$rTbl
         
         
 }
