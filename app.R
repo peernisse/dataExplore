@@ -141,7 +141,7 @@ ui <- fluidPage(
                                                    h2('Regression Tools'),
                                                    p('This tool allows for linear regression of 
                                                      selected variables. Select the independent (x)
-                                                     variable and the dependent (y) variable.')
+                                                     variable and the dependent (y) variable. Deselect points using clicking or drag selection, and the "Toggle Points" button.')
                                            ),
                                            fluidRow(
                                                    
@@ -150,7 +150,20 @@ ui <- fluidPage(
                                            ),
                                            fluidRow(
                                                    
-                                                   plotOutput('rPlot')
+                                                   plotOutput('rPlot',
+                                                              click = "rPlot_click",
+                                                              
+                                                              brush = brushOpts(
+                                                              id = "rPlot_brush"
+                                                              
+                                                                )
+                                                   )
+                                            ),
+                                           
+                                           fluidRow(
+                                                   actionButton("exclude_toggle", "Toggle points"),
+                                                   actionButton("exclude_reset", "Reset")     
+                                                   
                                            ),
                                         
                                           fluidRow(
@@ -638,7 +651,7 @@ server <- function(input, output, session) {
                 
                 
                 
-        })
+        })#renderPlot
         
         tsData2<-reactive({
                 filter(pData(),Location %in% input$locids,
@@ -757,25 +770,9 @@ server <- function(input, output, session) {
                 return(hp)
         })
         
-        #Regression plot------------------------
+        #Regression plot reactive dataframe setup------------------------
         
-        output$rPlot<-renderPlot({
-                
-                if(is.null(input$regrX)) return()
-                
-                #Testing version comment out to run app--------------------------
-                # rData<-pData %>%
-                #         # filter(Location %in% input$locids,
-                #         #        Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                #         #        Parameter %in% input$params,
-                #         #        Matrix %in% input$mtrx) %>% 
-                #         mutate(Date=as.Date(Date,format="%d-%b-%y"),
-                #                Result_ND=as.numeric(ifelse(DetectionFlag=='ND',ReportingLimit*0.5,Value))) %>% 
-                #         select(Location,Date,Parameter,Result_ND) %>% 
-                #         arrange(Location,Parameter,Date) %>% 
-                #         as.data.frame(.)
-                        
-                #----------------------------------------------------------
+        pdata<-reactive({
                 
                 rData<-pData() %>%
                         filter(Location %in% input$locids,
@@ -798,106 +795,12 @@ server <- function(input, output, session) {
                         
                         pdata<-data.frame(rX=rX,rY=rY)
                         
-                        xLab<-'Date'
-                        yLab<-unique(input$regrY)
-                        
-                } else
-                
-                if(input$regrX!='Date'){
-                        
-                        #Loop troubleshoot area---------------------------------
-                        # setup<-rData %>% 
-                        #         filter(Parameter %in% c('Arsenic','Copper')) %>% 
-                        #         select(Location, Date,Parameter,Result_ND)
-                        # 
-                        # setup$Parameter<-factor(setup$Parameter,levels=c('Arsenic','Copper'))
-                        # 
-                        # xLab<-'X'
-                        # yLab<-'Y'
-                        ##########################################################################
-                        
-                       setup<-rData %>% 
-                               filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
-                               select(Location,Date,Parameter,Result_ND)
-                        
-                        setup$Parameter<-factor(setup$Parameter,levels=c(input$regrY,input$regrX))
-                       
-                       pdata<-data.table::dcast(setup,Location+Date~Parameter,value.var='Result_ND',fun.aggregate=mean)
-                       
-                       pdata<-pdata %>% mutate(chk=complete.cases(.)) %>% filter(chk!=FALSE)
-                       
-                       names(pdata)<-c('Location','Date','rY','rX','CHECK')
-                       
-                       
-                       
-                       
-                       xLab<-unique(input$regrX)
-                       yLab<-unique(input$regrY)
-                       
-                }
-                
-                
-                # mdl<-lm(rY~rX,data=pdata)
-                # plot(rY~rX,data=pdata,xlab=xLab,ylab=yLab,pch=19,main=paste('Regression of',yLab,'vs',xLab))
-                # if(input$regrX=='Date'){lines(rY~rX,data=pdata,lty='dashed')}
-                # abline(mdl)
-                
-                g<-ggplot(pdata,aes(x=rX,y=rY))+
-                        geom_smooth(method='lm')+
-                        geom_point()+
-                        labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab))
-                g
-                
-                
-                
-        })#output$rPlot
-        
-        #Regression model output-------------------
-        
-        output$rTbl<-renderTable({
-                
-                
-                if(is.null(input$regrX)) return()
-                
-                rData<-pData() %>%
-                        filter(Location %in% input$locids,
-                               Date >= input$dtRng[1] & Date<=input$dtRng[2],
-                               Parameter %in% input$params,
-                               Matrix %in% input$mtrx) %>% 
-                        select(Location,Date,Parameter,Result_ND) %>% 
-                        arrange(Location,Parameter,Date) %>% 
-                        as.data.frame(.)
-                
-                if(input$regrX=='Date'){
-                        rX<-rData %>% 
-                                filter(Parameter == input$regrY) %>% 
-                                arrange(as.Date(Date)) %>% 
-                                pull(Date)
-                        
-                        rY<- rData %>% filter(Parameter == input$regrY) %>% 
-                                arrange(Date) %>% 
-                                pull(Result_ND)
-                        
-                        pdata<-data.frame(rX=rX,rY=rY)
-                        
-                        xLab<-'Date'
-                        yLab<-unique(input$regrY)
+                        #xLab<-'Date'
+                        #yLab<-unique(input$regrY)
                         
                 } else
                         
                         if(input$regrX!='Date'){
-                                
-                                
-                                #Loop troubleshoot area---------------------------------
-                                # setup<-rData %>% 
-                                #         filter(Parameter %in% c('Arsenic','Copper')) %>% 
-                                #         select(Location, Date,Parameter,Result_ND)
-                                # 
-                                # setup$Parameter<-factor(setup$Parameter,levels=c('Arsenic','Copper'))
-                                # 
-                                # xLab<-'X'
-                                # yLab<-'Y'
-                                ##########################################################################
                                 
                                 setup<-rData %>% 
                                         filter(Parameter %in% c(input$regrY,input$regrX)) %>% 
@@ -910,32 +813,97 @@ server <- function(input, output, session) {
                                 pdata<-pdata %>% mutate(chk=complete.cases(.)) %>% filter(chk!=FALSE)
                                 
                                 names(pdata)<-c('Location','Date','rY','rX','CHECK')
-                                
-                                
-                                
-                                
-                                xLab<-unique(input$regrX)
-                                yLab<-unique(input$regrY)
+                        
                                 
                         }
                 
-                mdl<-lm(rY~rX,data=pdata)
+                return(pdata)
                 
-                ###########################################################################
-                #Testing output keep commented out unless testing
+        })
+        
+        
+        # For storing which rows have been excluded
+        vals <- reactive({
+                reactiveValues(
+                        keeprows = rep(TRUE, nrow(pdata()))
+                )  
+        })
+        
+       
+        #Make the plot and output it
+        output$rPlot<-renderPlot({
+                if(is.null(input$regrX)) return()
                 
-                # mdl<-lm(iris$Sepal.Length~iris$Sepal.Width)
-                # broom::glance(mdl)
+                #Get axis values
+                xLab<-unique(input$regrX)
+                yLab<-unique(input$regrY)
+                locs<-input$locids 
+                locs<-paste(locs,collapse=', ')
+                print(locs)
+
+                # Plot the kept and excluded points as two separate data sets
+                keep    <- pdata()[ vals()$keeprows, , drop = FALSE]
+                exclude <- pdata()[!vals()$keeprows, , drop = FALSE]
+
+                g<-ggplot(keep,aes(x=rX,y=rY))+
+                        geom_smooth(method='lm')+
+                        geom_point(size=2.5)+
+                        geom_point(data=exclude,size=2.5,shape = 21, fill = NA, color = "black", alpha = 0.25)+
+                        labs(x=xLab,y=yLab,title=paste('Regression of',yLab,'vs',xLab,'\nFor Location(s)',locs))
+
+                g
+
+        })
+        #
+        #
+        # Toggle points that are clicked
+
+        observeEvent(input$rPlot_click, {
+                vals<-vals()
+
+                res <- nearPoints(pdata(), input$rPlot_click, allRows = TRUE)
+
+                vals$keeprows <- xor(vals$keeprows, res$selected_)
+        })
+
+        # Toggle points that are brushed, when button is clicked
+        observeEvent(input$exclude_toggle, {
+                vals<-vals()
                 
-                
-                ############################################################################
-                
+                res <- brushedPoints(pdata(), input$rPlot_brush, allRows = TRUE)
+
+                vals$keeprows <- xor(vals$keeprows, res$selected_)
+        })
+
+        # # Reset all points
+        observeEvent(input$exclude_reset, {
+
+                vals<-vals()
+
+                vals$keeprows <- rep(TRUE, nrow(pdata()))
+        })
+        
+        
+        
+        #Regression model output-------------------
+        
+        
+        output$rTbl<-renderTable({
+                pdata<-pdata()
+                vals<-vals()
+
+                # res <- brushedPoints(pdata(), input$rPlot_brush, allRows = TRUE)
+                # 
+                # vals$keeprows <- xor(vals$keeprows, res$selected_)
+
+                mdata   <- pdata()[ vals$keeprows, , drop = FALSE]
+
+                mdl<-lm(rY~rX,data=mdata)
+
                 mdlstats<-broom::glance(mdl)
-                
-                
                 mdlstats
-                
-        })#output$rTbl
+
+        })
         
         
 }
