@@ -96,7 +96,7 @@ ui <- fluidPage(
                              )
                               
                       )
-              ),
+              ),#fluid row
               
               # h5(strong("Choose Locations")),
               # uiOutput('choose_locs'),
@@ -111,7 +111,7 @@ ui <- fluidPage(
               
               
               
-        ),
+        ),#sidebar layout
       
       # plot preview and data export tools
       mainPanel(
